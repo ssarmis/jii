@@ -17,7 +17,7 @@
  * read these comments on the top of the header but a man can hope.
  * 
  * JIIObjModelData model;
- * JIIStatus status = JIIObjLoadData("path/to/obj", &model);
+ * JIIObjStatus status = JIIObjLoadData("path/to/obj", &model);
  * 
  * ...do stuff with it...
  * 
@@ -26,13 +26,16 @@
 
 #pragma once
 
-#include <stdint.h>
 #include <stdio.h>
 
+#ifndef JII_PRIMITIVE_DEFINES
+#define JII_PRIMITIVE_DEFINES
+#include <stdint.h>
 typedef int32_t i32;
 typedef int8_t i8;
 typedef uint32_t u32;
 typedef uint8_t u8;
+#endif
 
 struct JIIObjPosition {
 	float x;
@@ -96,7 +99,7 @@ struct JIIObjModelData {
 	i32 numberOfVertices;
 };
 
-enum JIIStatus {
+enum JIIObjStatus {
 	Ok,
 	Error,
 	Eof,
@@ -107,24 +110,28 @@ enum JIIStatus {
 extern "C" {
 #endif
 
-#ifndef JIIDEF
+#ifndef JIIDef
 #ifdef JII_OBJ_STATIC
-#define JIIDEF static
+#define JIIDef static
 #else
-#define JIIDEF extern
+#define JIIDef extern
 #endif
 #endif
 
-JIIDEF JIIStatus JIIObjLoadData(const char* path, JIIObjModelData* data);
-JIIDEF JIIStatus JIIObjLoadDataW(const wchar_t* path, JIIObjModelData* data);
+JIIDef JIIObjStatus JIIObjLoadData(const char* path, JIIObjModelData* data);
+JIIDef JIIObjStatus JIIObjLoadDataW(const wchar_t* path, JIIObjModelData* data);
 
-JIIDEF void JIIObjFreeData(JIIObjModelData* data);
+JIIDef void JIIObjFreeData(JIIObjModelData* data);
 
 #ifdef __cplusplus
 }
 #endif
 
 #ifdef JII_OBJ_IMPLMENTATION
+
+#ifndef JIIPrivate
+#define JIIPrivate static
+#endif
 
 #ifndef JIIAssert
 #include <assert.h>
@@ -163,7 +170,7 @@ struct JIIObjContext {
 	JIIObjModelData modelData;
 };
 
-static JIIStatus JIIObjCopyFileContentsToMemory(FILE* file, u8** buffer, u32* size) {
+JIIPrivate JIIObjStatus JIIObjCopyFileContentsToMemory(FILE* file, u8** buffer, u32* size) {
 	JIIAssert(file && size && buffer);
 
 	fseek(file, 0, SEEK_END);
@@ -177,10 +184,10 @@ static JIIStatus JIIObjCopyFileContentsToMemory(FILE* file, u8** buffer, u32* si
 		bytesRead += fread(*buffer + bytesRead, 1, *size - bytesRead, file);
 	}
 
-	return JIIStatus::Ok;
+	return JIIObjStatus::Ok;
 }
 
-static JIIStatus JIIObjReadFile(const char* path, u8** buffer, u32* size) {
+JIIPrivate JIIObjStatus JIIObjReadFile(const char* path, u8** buffer, u32* size) {
 	JIIAssert(path && size && buffer);
 	
 	FILE* file;
@@ -188,17 +195,17 @@ static JIIStatus JIIObjReadFile(const char* path, u8** buffer, u32* size) {
 	if (fopen_s(&file, path, "rb") != 0) {
 		*buffer = NULL;
 		*size = 0;
-		return JIIStatus::Error;
+		return JIIObjStatus::Error;
 	}
 
-	JIIStatus result = JIIObjCopyFileContentsToMemory(file, buffer, size);
+	JIIObjStatus result = JIIObjCopyFileContentsToMemory(file, buffer, size);
 
 	fclose(file);
 
 	return result;
 }
 
-static JIIStatus JIIObjReadFileW(const wchar_t* path, u8** buffer, u32* size) {
+JIIPrivate JIIObjStatus JIIObjReadFileW(const wchar_t* path, u8** buffer, u32* size) {
 	JIIAssert(path && size && buffer);
 	
 	FILE* file;
@@ -206,56 +213,56 @@ static JIIStatus JIIObjReadFileW(const wchar_t* path, u8** buffer, u32* size) {
 	if (_wfopen_s(&file, path, L"rb") != 0) {
 		*buffer = NULL;
 		*size = 0;
-		return JIIStatus::Error;
+		return JIIObjStatus::Error;
 	}
 
-	JIIStatus result = JIIObjCopyFileContentsToMemory(file, buffer, size);
+	JIIObjStatus result = JIIObjCopyFileContentsToMemory(file, buffer, size);
 
 	fclose(file);
 
 	return result;
 }
 
-static bool JIIObjIsDigit(char c) {
+JIIPrivate bool JIIObjIsDigit(char c) {
 	return c >= '0' && c <= '9';
 }
 
-static bool JIIObjIsWhitespace(char c) {
+JIIPrivate bool JIIObjIsWhitespace(char c) {
 	return (c == ' ' || c == '\t');
 }
 
-static bool JIIObjIsLineEnd(char c) {
+JIIPrivate bool JIIObjIsLineEnd(char c) {
 	return (c == '\n' || c == '\r');
 }
 
-static JIIStatus JIIObjEatLineEnd(JIIObjContext* context) {
+JIIPrivate JIIObjStatus JIIObjEatLineEnd(JIIObjContext* context) {
 	JIIAssert(context);
 
 	while (context->fileBuffer[context->fileCursor] == '\n' ||
 		context->fileBuffer[context->fileCursor] == '\r') {
 		++context->fileCursor;
 		if (context->fileCursor >= context->fileSize) {
-			return JIIStatus::Eof;
+			return JIIObjStatus::Eof;
 		}
 	}
 
-	return JIIStatus::Ok;
+	return JIIObjStatus::Ok;
 }
 
-static JIIStatus JIIObjSkipToNextLine(JIIObjContext* context) {
+JIIPrivate JIIObjStatus JIIObjSkipToNextLine(JIIObjContext* context) {
 	JIIAssert(context);
 
 	while (!JIIObjIsLineEnd(context->fileBuffer[context->fileCursor])) {
 		++context->fileCursor;
 		if (context->fileCursor >= context->fileSize) {
-			return JIIStatus::Eof;
+			return JIIObjStatus::Eof;
 		}
 	}
 	
 	return JIIObjEatLineEnd(context);
 }
 
-static JIIStatus JIIObjReadLine(JIIObjContext* context, u8* lineBuffer, u32* size, u32 maxSize) {
+JIIPrivate JIIObjStatus JIIObjReadLine(JIIObjContext* context, u8* lineBuffer, u32* size, u32 maxSize) {
 	JIIAssert(context);
 
 	// # is a comment, just skip the line
@@ -266,13 +273,13 @@ static JIIStatus JIIObjReadLine(JIIObjContext* context, u8* lineBuffer, u32* siz
 	u32 offset = 0;
 	while (!JIIObjIsLineEnd(context->fileBuffer[context->fileCursor])) {
 		if (offset >= maxSize) {
-			return JIIStatus::OutOfSpace;
+			return JIIObjStatus::OutOfSpace;
 		}
 
 		lineBuffer[offset++] = context->fileBuffer[context->fileCursor];
 		++context->fileCursor;
 		if (context->fileCursor >= context->fileSize) {
-			return JIIStatus::Eof;
+			return JIIObjStatus::Eof;
 		}
 	}
 
@@ -281,7 +288,7 @@ static JIIStatus JIIObjReadLine(JIIObjContext* context, u8* lineBuffer, u32* siz
 	return JIIObjEatLineEnd(context);
 }
 
-static void JIIObjEatWhitespaces(u8* lineBuffer, u32 lineSize, u32* offset) {
+JIIPrivate void JIIObjEatWhitespaces(u8* lineBuffer, u32 lineSize, u32* offset) {
 	JIIAssert(lineBuffer);
 
 	while (JIIObjIsWhitespace(lineBuffer[*offset])) {
@@ -311,7 +318,7 @@ static void JIIObjEatWhitespaces(u8* lineBuffer, u32 lineSize, u32* offset) {
 	}\
 }
 
-static u32 JIIObjEatU32(u8* lineBuffer, u32 lineSize, u32* offset) {
+JIIPrivate u32 JIIObjEatU32(u8* lineBuffer, u32 lineSize, u32* offset) {
 	u32 result = 0;
 
 	JIIObjEatWhitespaces(lineBuffer, lineSize, offset);
@@ -324,7 +331,7 @@ static u32 JIIObjEatU32(u8* lineBuffer, u32 lineSize, u32* offset) {
 	return result;
 }
 
-static float JIIObjEatFloat(u8* lineBuffer, u32 lineSize, u32* offset) {
+JIIPrivate float JIIObjEatFloat(u8* lineBuffer, u32 lineSize, u32* offset) {
 	JIIAssert(lineBuffer);
 
 	JIIObjEatWhitespaces(lineBuffer, lineSize, offset);
@@ -415,11 +422,11 @@ static float JIIObjEatFloat(u8* lineBuffer, u32 lineSize, u32* offset) {
 }
 
 // this function is the definition of spray and pray
-static JIIStatus JIIObjParseVertexAttribute(JIIObjContext* context, u8* lineBuffer, u32 lineSize, u32 offset) {
+JIIPrivate JIIObjStatus JIIObjParseVertexAttribute(JIIObjContext* context, u8* lineBuffer, u32 lineSize, u32 offset) {
 	JIIAssert(context && lineBuffer && lineSize);
 
 	if (offset + 1 >= lineSize) {
-		return JIIStatus::Eof;
+		return JIIObjStatus::Eof;
 	}
 
 	// function is always called after 'v' was already detected
@@ -456,12 +463,12 @@ static JIIStatus JIIObjParseVertexAttribute(JIIObjContext* context, u8* lineBuff
 		}
 	}
 
-	return JIIStatus::Ok;
+	return JIIObjStatus::Ok;
 }
 
-static JIIStatus JIIObjParseFace(JIIObjContext* context, u8* lineBuffer, u32 lineSize, u32 offset) {
+JIIPrivate JIIObjStatus JIIObjParseFace(JIIObjContext* context, u8* lineBuffer, u32 lineSize, u32 offset) {
 	JIIAssert(context && lineBuffer && lineSize);
-	JII_ADVANCE_CHECK_RETURN(offset, lineSize, JIIStatus::Eof);
+	JII_ADVANCE_CHECK_RETURN(offset, lineSize, JIIObjStatus::Eof);
 
 	u32 verticesInFace = 0;
 
@@ -469,7 +476,7 @@ static JIIStatus JIIObjParseFace(JIIObjContext* context, u8* lineBuffer, u32 lin
 	u32 cachedIndex1;
 
 	while (JIIObjIsWhitespace(lineBuffer[offset])) {
-		JII_ADVANCE_CHECK_RETURN(offset, lineSize, JIIStatus::Eof);
+		JII_ADVANCE_CHECK_RETURN(offset, lineSize, JIIObjStatus::Eof);
 
 		u32 position = UINT_MAX;
 		u32 uv = UINT_MAX;
@@ -477,14 +484,14 @@ static JIIStatus JIIObjParseFace(JIIObjContext* context, u8* lineBuffer, u32 lin
 
 		position = JIIObjEatU32(lineBuffer, lineSize, &offset);
 		if (offset < lineSize && lineBuffer[offset] == '/') {
-			JII_ADVANCE_CHECK_RETURN(offset, lineSize, JIIStatus::Eof);
+			JII_ADVANCE_CHECK_RETURN(offset, lineSize, JIIObjStatus::Eof);
 			// f p//n p//n p//n is accepted input
 			if (lineBuffer[offset] != '/') {
 				uv = JIIObjEatU32(lineBuffer, lineSize, &offset);
 			}
 
 			if (offset < lineSize && lineBuffer[offset] == '/') {
-				JII_ADVANCE_CHECK_RETURN(offset, lineSize, JIIStatus::Eof);
+				JII_ADVANCE_CHECK_RETURN(offset, lineSize, JIIObjStatus::Eof);
 				normal = JIIObjEatU32(lineBuffer, lineSize, &offset);
 			}
 		}
@@ -527,10 +534,10 @@ static JIIStatus JIIObjParseFace(JIIObjContext* context, u8* lineBuffer, u32 lin
 	}
 }
 
-static JIIStatus JIIObjParseLine(JIIObjContext* context, u8* lineBuffer, u32 lineSize) {
+JIIPrivate JIIObjStatus JIIObjParseLine(JIIObjContext* context, u8* lineBuffer, u32 lineSize) {
 	JIIAssert(context && lineBuffer && lineSize);
 
-	JIIStatus status = JIIStatus::Ok;
+	JIIObjStatus status = JIIObjStatus::Ok;
 
 	u32 offset = 0;
 	switch (lineBuffer[offset]) {
@@ -551,7 +558,7 @@ static JIIStatus JIIObjParseLine(JIIObjContext* context, u8* lineBuffer, u32 lin
 	return status;
 }
 
-static void JIIObjTryPeekAttribute(JIIObjContext* context) {
+JIIPrivate void JIIObjTryPeekAttribute(JIIObjContext* context) {
 	JIIAssert(context);
 
 	switch (context->fileBuffer[context->fileCursor]) {
@@ -605,26 +612,26 @@ static void JIIObjTryPeekAttribute(JIIObjContext* context) {
 	}
 }
 
-static JIIStatus JIIObjPeekFile(JIIObjContext* context) {
+JIIPrivate JIIObjStatus JIIObjPeekFile(JIIObjContext* context) {
 	JIIAssert(context);
 
 	u32 saveCursor = context->fileCursor;
 
-	JIIStatus status;
+	JIIObjStatus status;
 	while (true) {
 		JIIObjTryPeekAttribute(context);
 		status = JIIObjSkipToNextLine(context);
-		if (status != JIIStatus::Ok) {
+		if (status != JIIObjStatus::Ok) {
 			break;
 		}
 	}
 
 	context->fileCursor = saveCursor;
 
-	return JIIStatus::Ok;
+	return JIIObjStatus::Ok;
 }
 
-static JIIStatus JIIObjParseBuffer(JIIObjContext* context) {
+JIIPrivate JIIObjStatus JIIObjParseBuffer(JIIObjContext* context) {
 	JIIAssert(context);
 
 	// peek in order to preallocate all the needed space
@@ -639,36 +646,36 @@ static JIIStatus JIIObjParseBuffer(JIIObjContext* context) {
 	
 	u8 lineBuffer[256];
 	u32 lineSize;
-	JIIStatus status;
+	JIIObjStatus status;
 	while (true) {
 		status = JIIObjReadLine(context, lineBuffer, &lineSize, 256);
-		if (status != JIIStatus::Ok) {
+		if (status != JIIObjStatus::Ok) {
 			return status;
 		}
 
 		if (lineSize != 0) {
 			status = JIIObjParseLine(context, lineBuffer, lineSize);
-			if (status != JIIStatus::Ok) {
+			if (status != JIIObjStatus::Ok) {
 				return status;
 			}
 		}
 	}
 }
 
-JIIDEF JIIStatus JIIObjLoadData(const char* path, JIIObjModelData* data) {
+JIIDef JIIObjStatus JIIObjLoadData(const char* path, JIIObjModelData* data) {
 	JIIAssert(path && data);
 
 	JIIObjContext context = {};
 
-	JIIStatus status;
+	JIIObjStatus status;
 
 	status = JIIObjReadFile(path, &context.fileBuffer, &context.fileSize);
-	if (status != JIIStatus::Ok) {
+	if (status != JIIObjStatus::Ok) {
 		return status;
 	}
 
 	status = JIIObjParseBuffer(&context);
-	if (status != JIIStatus::Ok && status != JIIStatus::Eof) {
+	if (status != JIIObjStatus::Ok && status != JIIObjStatus::Eof) {
 		return status;
 	}
 
@@ -676,33 +683,33 @@ JIIDEF JIIStatus JIIObjLoadData(const char* path, JIIObjModelData* data) {
 
 	*data = context.modelData;
 
-	return JIIStatus::Ok;
+	return JIIObjStatus::Ok;
 }
 
-JIIDEF JIIStatus JIIObjLoadDataW(const wchar_t* path, JIIObjModelData* data) {
+JIIDef JIIObjStatus JIIObjLoadDataW(const wchar_t* path, JIIObjModelData* data) {
 	JIIAssert(path && data);
 
 	JIIObjContext context = {};
 
-	JIIStatus status;
+	JIIObjStatus status;
 
 	status = JIIObjReadFileW(path, &context.fileBuffer, &context.fileSize);
-	if (status != JIIStatus::Ok) {
+	if (status != JIIObjStatus::Ok) {
 		return status;
 	}
 
 	status = JIIObjParseBuffer(&context);
-	if (status != JIIStatus::Ok && status != JIIStatus::Eof) {
+	if (status != JIIObjStatus::Ok && status != JIIObjStatus::Eof) {
 		return status;
 	}
 
 	JIIFree(context.fileBuffer);
 
 	*data = context.modelData;
-	return JIIStatus::Ok;
+	return JIIObjStatus::Ok;
 }
 
-JIIDEF void JIIObjFreeData(JIIObjModelData* data) {
+JIIDef void JIIObjFreeData(JIIObjModelData* data) {
 	JIIAssert(data);
 
 	JIIFree(data->positions);
